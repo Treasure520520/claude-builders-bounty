@@ -34,6 +34,20 @@ You're in the right place.
 
 ---
 
+## n8n Weekly Dev Summary Workflow
+
+The bounty [#5](../../issues/5) workflow lives in [`workflows/github-weekly-summary.workflow.json`](workflows/github-weekly-summary.workflow.json).
+
+It runs weekly, gathers GitHub commits, closed issues, and merged PRs, asks Claude Sonnet 4 for a narrative summary, and posts the result to Discord. Setup is documented in [`workflows/README.md`](workflows/README.md).
+
+Validation:
+
+```bash
+python3 tests/validate_n8n_workflow.py
+```
+
+---
+
 ## Rules
 
 - Tasks must be related to Claude Code or AI tooling
