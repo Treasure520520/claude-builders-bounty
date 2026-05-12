@@ -185,14 +185,24 @@ def append_block_log(command: str, project_path: str, reason: str) -> None:
 
 def block(command: str, project_path: str, reason: str) -> int:
     append_block_log(command, project_path, reason)
-    print(
+    message = (
         "Blocked destructive Bash command before execution.\n"
         f"Reason: {reason}\n"
         f"Project: {project_path}\n"
-        "The attempted command was logged to ~/.claude/hooks/blocked.log.",
-        file=sys.stderr,
+        "The attempted command was logged to ~/.claude/hooks/blocked.log."
     )
-    return 2
+    print(
+        json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": message,
+                }
+            }
+        )
+    )
+    return 0
 
 
 def main() -> int:

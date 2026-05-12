@@ -50,7 +50,9 @@ Every blocked command is appended to `~/.claude/hooks/blocked.log` as JSON with
 the timestamp, attempted command, project path, and matched rule. Normal Bash
 commands such as `ls`, `cat README.md`, and `npm test` pass through without
 output. Searches such as `grep -R 'DROP TABLE' migrations/` are treated as
-normal commands instead of destructive SQL execution.
+normal commands instead of destructive SQL execution. Blocked commands return
+Claude Code `PreToolUse` JSON with `permissionDecision: "deny"` and a clear
+reason for Claude.
 
 Install in one command from this repository:
 
@@ -105,13 +107,7 @@ Demo transcript:
 
 ```text
 $ printf '{"tool_name":"Bash","tool_input":{"command":"rm -rf ./dist"},"cwd":"/repo"}' | python3 hooks/block_destructive_bash.py
-Blocked destructive Bash command before execution.
-Reason: recursive forced removal
-Project: /repo
-The attempted command was logged to ~/.claude/hooks/blocked.log.
-
-$ echo $?
-2
+{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "Blocked destructive Bash command before execution.\nReason: recursive forced removal\nProject: /repo\nThe attempted command was logged to ~/.claude/hooks/blocked.log."}}
 
 $ printf '{"tool_name":"Bash","tool_input":{"command":"npm test"},"cwd":"/repo"}' | python3 hooks/block_destructive_bash.py
 $ echo $?

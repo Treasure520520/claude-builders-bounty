@@ -36,12 +36,20 @@ class BlockDestructiveBashHookTest(unittest.TestCase):
             "cwd": "/tmp/example-project",
         }
 
+    def assert_blocked(self, result: subprocess.CompletedProcess[str], reason: str) -> None:
+        output = json.loads(result.stdout)
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(output["hookSpecificOutput"]["hookEventName"], "PreToolUse")
+        self.assertEqual(output["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertIn(reason, output["hookSpecificOutput"]["permissionDecisionReason"])
+
     def test_allows_normal_bash_commands(self) -> None:
         with tempfile.TemporaryDirectory() as home:
             result = self.run_hook(self.bash_event("ls && cat README.md && npm test"), home)
 
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stderr, "")
+        self.assertEqual(result.stdout, "")
 
     def test_allows_searching_for_dangerous_sql_text(self) -> None:
         with tempfile.TemporaryDirectory() as home:
@@ -55,8 +63,7 @@ class BlockDestructiveBashHookTest(unittest.TestCase):
             log_path = Path(home) / ".claude" / "hooks" / "blocked.log"
             log = json.loads(log_path.read_text(encoding="utf-8").strip())
 
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("recursive forced removal", result.stderr)
+        self.assert_blocked(result, "recursive forced removal")
         self.assertEqual(log["command"], "rm -rf ./dist")
         self.assertEqual(log["project_path"], "/tmp/example-project")
         self.assertEqual(log["reason"], "recursive forced removal")
@@ -67,7 +74,7 @@ class BlockDestructiveBashHookTest(unittest.TestCase):
         for command in variants:
             with self.subTest(command=command), tempfile.TemporaryDirectory() as home:
                 result = self.run_hook(self.bash_event(command), home)
-                self.assertEqual(result.returncode, 2)
+                self.assert_blocked(result, "recursive forced removal")
 
     def test_blocks_required_sql_patterns(self) -> None:
         destructive_commands = [
@@ -80,7 +87,8 @@ class BlockDestructiveBashHookTest(unittest.TestCase):
         for command in destructive_commands:
             with self.subTest(command=command), tempfile.TemporaryDirectory() as home:
                 result = self.run_hook(self.bash_event(command), home)
-                self.assertEqual(result.returncode, 2)
+                self.assertEqual(result.returncode, 0)
+                self.assertEqual(json.loads(result.stdout)["hookSpecificOutput"]["permissionDecision"], "deny")
 
     def test_delete_with_where_is_allowed(self) -> None:
         with tempfile.TemporaryDirectory() as home:
@@ -94,8 +102,7 @@ class BlockDestructiveBashHookTest(unittest.TestCase):
             with self.subTest(command=command), tempfile.TemporaryDirectory() as home:
                 result = self.run_hook(self.bash_event(command), home)
 
-            self.assertEqual(result.returncode, 2)
-            self.assertIn("forced git push", result.stderr)
+            self.assert_blocked(result, "forced git push")
 
     def test_custom_allow_rule_overrides_default_deny_rule(self) -> None:
         with tempfile.TemporaryDirectory() as home:
