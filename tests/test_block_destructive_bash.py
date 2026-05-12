@@ -57,6 +57,12 @@ class BlockDestructiveBashHookTest(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0)
 
+    def test_allows_echoing_dangerous_shell_text(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            result = self.run_hook(self.bash_event("echo 'rm -rf ./dist'"), home)
+
+        self.assertEqual(result.returncode, 0)
+
     def test_blocks_rm_rf_and_logs_attempt(self) -> None:
         with tempfile.TemporaryDirectory() as home:
             result = self.run_hook(self.bash_event("rm -rf ./dist"), home)
@@ -70,7 +76,13 @@ class BlockDestructiveBashHookTest(unittest.TestCase):
         self.assertIsNotNone(datetime.fromisoformat(log["timestamp"]))
 
     def test_blocks_rm_force_recursive_variants(self) -> None:
-        variants = ["rm -fr ./dist", "rm -r -f ./dist", "rm -f -r ./dist"]
+        variants = [
+            "rm -fr ./dist",
+            "rm -r -f ./dist",
+            "rm -f -r ./dist",
+            "sudo rm -rf ./dist",
+            "command rm --recursive --force ./dist",
+        ]
         for command in variants:
             with self.subTest(command=command), tempfile.TemporaryDirectory() as home:
                 result = self.run_hook(self.bash_event(command), home)
@@ -97,7 +109,11 @@ class BlockDestructiveBashHookTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
 
     def test_blocks_force_push(self) -> None:
-        force_pushes = ["git push origin main --force-with-lease", "git push origin main -f"]
+        force_pushes = [
+            "git push origin main --force-with-lease",
+            "git push origin main -f",
+            "git -C ../repo push origin main --force",
+        ]
         for command in force_pushes:
             with self.subTest(command=command), tempfile.TemporaryDirectory() as home:
                 result = self.run_hook(self.bash_event(command), home)

@@ -16,11 +16,11 @@ from typing import Any
 DEFAULT_DENY_RULES = [
     {
         "name": "recursive forced removal",
-        "pattern": r"(?is)(^|[;&|]\s*)rm\s+(?:-[^\s]*r[^\s]*f|-+[^\s]*f[^\s]*r|(?:-[^\s]+\s+)*-r\s+(?:-[^\s]+\s+)*-f|(?:-[^\s]+\s+)*-f\s+(?:-[^\s]+\s+)*-r)\b",
+        "pattern": r"(?is)(^|[;&|]\s*)(?:sudo\s+|command\s+)?rm\s+(?=[^\n;&|]*?(?:-[^\s]*r[^\s]*\b|--recursive\b))(?=[^\n;&|]*?(?:-[^\s]*f[^\s]*\b|--force\b))",
     },
     {
         "name": "forced git push",
-        "pattern": r"(?is)\bgit\s+push\b[^\n;|&]*(?:--force(?:-with-lease)?\b|(?:^|\s)-f(?:\s|$))",
+        "pattern": r"(?is)(^|[;&|]\s*)git\s+(?:-[A-Za-z]\s+\S+\s+)*push\b[^\n;|&]*(?:--force(?:-with-lease)?\b|(?:^|\s)-f(?:\s|$))",
     },
 ]
 
