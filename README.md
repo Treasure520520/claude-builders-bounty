@@ -59,6 +59,14 @@ Optional file output:
 ./claude-review --pr https://github.com/owner/repo/pull/123 --output review.md
 ```
 
+Post the review as a PR comment:
+
+```bash
+./claude-review --pr https://github.com/owner/repo/pull/123 --post-comment
+```
+
+The repository also includes `workflows/claude-review.yml`, a ready-to-copy GitHub Actions workflow that runs the same agent on pull requests or through `workflow_dispatch`.
+
 ### Sample Outputs
 
 Two sample reviews from real GitHub PRs are included:
@@ -72,6 +80,7 @@ Two sample reviews from real GitHub PRs are included:
 python3 -m unittest discover -s tests
 ./claude-review --pr https://github.com/claude-builders-bounty/claude-builders-bounty/pull/1033 --output /tmp/review-1033.md
 ./claude-review --pr https://github.com/moleculerjs/moleculer/pull/1356 --output /tmp/review-1356.md
+./claude-review --pr https://github.com/claude-builders-bounty/claude-builders-bounty/pull/1033 --post-comment
 ```
 
 ---

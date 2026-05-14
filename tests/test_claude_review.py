@@ -53,6 +53,12 @@ class ClaudeReviewTests(unittest.TestCase):
         )
         self.assertIn("## Confidence: High", claude_review.build_review(context))
 
+    def test_format_comment_body_wraps_review(self):
+        body = claude_review.format_comment_body("## Summary\nLooks good.")
+        self.assertTrue(body.startswith("## Claude Review Agent"))
+        self.assertIn("## Summary", body)
+        self.assertTrue(body.endswith("\n"))
+
 
 if __name__ == "__main__":
     unittest.main()

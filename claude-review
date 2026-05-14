@@ -79,6 +79,21 @@ def http_get(url: str, token: str | None = None, accept: str = "application/vnd.
         return response.read().decode("utf-8")
 
 
+def http_post(url: str, payload: dict[str, str], token: str | None = None) -> str:
+    if not token:
+        raise SystemExit("Posting a review via HTTP fallback requires GITHUB_TOKEN.")
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "User-Agent": "claude-review-agent",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    request = Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+    with urlopen(request, timeout=30) as response:
+        return response.read().decode("utf-8")
+
+
 def fetch_with_gh(pr: PullRequest) -> ReviewContext:
     repo = f"{pr.owner}/{pr.repo}"
     raw = run_gh([
@@ -130,6 +145,31 @@ def fetch_context(pr: PullRequest) -> ReviewContext:
             return fetch_with_http(pr)
         except (HTTPError, URLError, TimeoutError, KeyError, json.JSONDecodeError) as exc:
             raise SystemExit(f"Unable to fetch pull request data: {exc}") from exc
+
+
+def format_comment_body(review: str) -> str:
+    return f"## Claude Review Agent\n\n{review.strip()}\n"
+
+
+def post_comment_with_gh(pr: PullRequest, body: str) -> None:
+    run_gh(["pr", "comment", pr.number, "--repo", f"{pr.owner}/{pr.repo}", "--body", body])
+
+
+def post_comment_with_http(pr: PullRequest, body: str) -> None:
+    token = os.environ.get("GITHUB_TOKEN")
+    url = f"https://api.github.com/repos/{pr.owner}/{pr.repo}/issues/{pr.number}/comments"
+    http_post(url, {"body": body}, token)
+
+
+def post_review_comment(pr: PullRequest, review: str) -> None:
+    body = format_comment_body(review)
+    try:
+        post_comment_with_gh(pr, body)
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        try:
+            post_comment_with_http(pr, body)
+        except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+            raise SystemExit(f"Unable to post review comment: {exc}") from exc
 
 
 def risk_for_file(path: str) -> list[str]:
@@ -231,13 +271,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Review a GitHub pull request and print structured Markdown.")
     parser.add_argument("--pr", required=True, help="GitHub pull request URL")
     parser.add_argument("--output", help="Optional file path for the Markdown review")
+    parser.add_argument("--post-comment", action="store_true", help="Post the structured review as a PR comment")
     args = parser.parse_args()
 
-    context = fetch_context(parse_pr_url(args.pr))
+    pr = parse_pr_url(args.pr)
+    context = fetch_context(pr)
     review = build_review(context)
     if args.output:
         Path(args.output).write_text(review + "\n", encoding="utf-8")
     print(review)
+    if args.post_comment:
+        post_review_comment(pr, review)
     return 0
 
 
